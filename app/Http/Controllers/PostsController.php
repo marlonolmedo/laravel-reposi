@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\BlogPost;
 use App\Http\Requests\StorePost;
+//use Illuminate\Support\Facades\DB;
 
 class PostsController extends Controller
 {
@@ -16,7 +17,21 @@ class PostsController extends Controller
     public function index()
     {
         //BlogPost::orderBy('create_at','desc')->take(5)->get();
-        return view('post.index',['posts' => BlogPost::all()]);
+        // DB::connection()->enableQueryLog();
+
+        // $posts = BlogPost::with('comments')->get();
+
+        // foreach ($posts as $post) {
+        //     foreach ($post->comments as $comment) {
+        //         echo $comment->content;
+        //     }
+        // }
+
+        // dd(DB::getQueryLog());
+
+        return view('post.index',
+                    ['posts' => BlogPost::withCount('comments')->get()]
+        );
     }
 
     /**

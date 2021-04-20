@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 // use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 use App\Models\BlogPost;
+use App\Models\Comment;
 
 class PostsTest extends TestCase
 {
@@ -22,7 +23,7 @@ class PostsTest extends TestCase
         $response->assertSeeText('NO POST FOUND!');
     }
 
-    public function testSee1BlogPostWhenThereIs1()
+    public function testSee1BlogPostWhenThereIs1WithNoComments()
     {
         //arrange
         $post = $this->createDummyBlogpost();
@@ -32,6 +33,7 @@ class PostsTest extends TestCase
 
         //assert
         $response->assertSeeText('new title');
+        $response->assertSeeText('no coments yet!');
 
         $this->assertDatabaseHas('blog_posts',[
             'title' => 'new title'
@@ -142,5 +144,16 @@ class PostsTest extends TestCase
         $post->save();
 
         return $post;
+    }
+
+    public function testSeeBlogPostWithComments(){
+        $post = $this->createDummyBlogpost();
+        Comment::factory(4)->create([
+            'blog_post_id' => $post->id
+        ]);
+        
+        $response = $this->get('/posts');
+
+        $response->assertSeeText('4 Comments');
     }
 }
