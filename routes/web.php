@@ -39,7 +39,9 @@ $post = [
     ]
 ];
 
-Route::get('/', [HomeController::class,'home'])->name('home.index');
+Route::get('/', [HomeController::class,'home'])
+->name('home.index');
+//->middleware('auth');
 
 Route::get('/contact', [HomeController::class,'contact'])->name('home.contact');
 
@@ -51,6 +53,8 @@ Auth::routes();
 // Route::view('/contact','home.contact')->name('home.contact');
 
 Route::resource('posts', PostsController::class);
+//->except('index')
+// Route::get("/posts/{id?}", [PostsController::class,'index'])->name('posts.index');
 //->only(['index','show','create','store','edit','update']);
 //Route::resource('posts', PostsController::class)->except(['index','show']);
 
