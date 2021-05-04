@@ -40,4 +40,6 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+    
+    //esta es una prueba de que si puedo descargar el mismo archivo pero de otro repo
 }
