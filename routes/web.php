@@ -5,6 +5,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\AboutController;
 use App\Http\Controllers\PostsController;
+use App\Http\Controllers\PostTagController;
+use App\Http\Controllers\PostCommentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -47,12 +49,19 @@ Route::get('/contact', [HomeController::class,'contact'])->name('home.contact');
 
 Route::get("/single", AboutController::class);
 
+Route::get('/secret',[HomeController::class,'secret'])
+        ->name('secret')
+        ->middleware('can:home.secret');
+
 Auth::routes();
+
+Route::get('/posts/tag/{tag}',[PostTagController::class,'index'])->name('posts.tags.index');
 
 // Route::view('/','home.index')->name('home.index');
 // Route::view('/contact','home.contact')->name('home.contact');
 
 Route::resource('posts', PostsController::class);
+Route::resource('posts.comments', PostCommentController::class)->only(['store']);
 //->except('index')
 // Route::get("/posts/{id?}", [PostsController::class,'index'])->name('posts.index');
 //->only(['index','show','create','store','edit','update']);

@@ -75,7 +75,8 @@ class PostsTest extends TestCase
     public function testUpdateValid(){
 
         //arrange
-        $post = $this->createDummyBlogpost();
+        $user = $this->user();
+        $post = $this->createDummyBlogpost($user->id);
 
         $this->assertDatabaseHas('blog_posts',[
             "id" => 1,
@@ -90,7 +91,8 @@ class PostsTest extends TestCase
             'content' => 'content new for testing examples'
         ];
 
-        $this->actingAs($this->user())->put("/posts/{$post->id}",$params)
+        $this->actingAs($user)
+        ->put("/posts/{$post->id}",$params)
         ->assertStatus(302)
         ->assertSessionHas('status');
 
@@ -115,7 +117,8 @@ class PostsTest extends TestCase
     public function testDeleteValid(){
 
         //arrange
-        $post = $this->createDummyBlogpost();
+        $user = $this->user();
+        $post = $this->createDummyBlogpost($user->id);
 
         $this->assertDatabaseHas('blog_posts',[
             "id" => 1,
@@ -123,28 +126,42 @@ class PostsTest extends TestCase
             "content" => "content to content post",
         ]);
 
-        $this->actingAs($this->user())->delete("/posts/{$post->id}")
+        $this->actingAs($user)->delete("/posts/{$post->id}")
         ->assertStatus(302)
         ->assertSessionHas('status');
 
         $this->assertEquals(session('status'),'Bloc post was deleted!');
 
-        $this->assertDatabaseMissing('blog_posts',[
+        // $this->assertDatabaseMissing('blog_posts',[
+        //     "id" => 1,
+        //     "title" => "new title",
+        //     "content" => "content to content post"
+        // ]);
+        $this->assertSoftDeleted('blog_posts',[
             "id" => 1,
             "title" => "new title",
-            "content" => "content to content post"
+            "content" => "content to content post",
         ]);
         
     }
 
-    private function createDummyBlogpost(): BlogPost{
+    private function createDummyBlogpost($userid = null): BlogPost{
 
-        $post = new BlogPost();
-        $post->title = "new title";
-        $post->content = "content to content post";
-        $post->save();
+        // $post = new BlogPost();
+        // $post->title = "new title";
+        // $post->content = "content to content post";
+        // $post->save();
 
-        return $post;
+        return BlogPost::factory()->state(function (array $attributes){
+            return [
+                'title' => 'new title',
+                'content' => 'content to content post'
+            ];
+        })->create(
+            [
+                'user_id' => $userid ?? $this->user()->id
+            ]
+        );
     }
 
     public function testSeeBlogPostWithComments(){

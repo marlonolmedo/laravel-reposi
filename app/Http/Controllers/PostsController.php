@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\BlogPost;
 use App\Http\Requests\StorePost;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Cache;
 //use Illuminate\Support\Facades\DB;
+use App\Models\User;
+//use Illuminate\Support\Facades\Cache;
 
 class PostsController extends Controller
 {
@@ -19,6 +23,8 @@ class PostsController extends Controller
      */
     public function index()
     {
+        ini_set( 'memory_limit', '1048M' );
+        ini_set('max_execution_time', '9999');
         //BlogPost::orderBy('create_at','desc')->take(5)->get();
         // DB::connection()->enableQueryLog();
 
@@ -31,9 +37,14 @@ class PostsController extends Controller
         // }
 
         // dd(DB::getQueryLog());
+        // $comments_all = Cache::remember('all_comments', 600, function () {
+        //     return BlogPost::withCount('comments')->get();
+        // });
 
         return view('post.index',
-                    ['posts' => BlogPost::withCount('comments')->get()]
+                    [
+                        'posts' => BlogPost::LatesWithRelation()->get()
+                    ]
         );
     }
 
@@ -57,6 +68,7 @@ class PostsController extends Controller
     {
         //dd($request);
         $validate = $request->validated();
+        $validate['user_id'] = $request->user()->id;
         $post = BlogPost::create($validate);
         //$post = new BlogPost();
         // $post->title = $validate['title'];
@@ -82,7 +94,49 @@ class PostsController extends Controller
     public function show($id)
     {
         //abort_if(!isset($this->post[$id]),404);
-        return view('post.show',['post' => BlogPost::with('comments')->findOrFail($id)]);
+        // return view('post.show',['post' => BlogPost::with(['comments' => function ($query) {
+        //     return $query->latest();
+        // }])->findOrFail($id)]);
+        $blogpost = Cache::remember("blog-post-{$id}", 60, function () use ($id) {
+            return BlogPost::with('comments','tags','user','comments.user')
+            ->findOrFail($id);
+        });
+        $sessionid = session()->getid();
+        $counterkey = "blog-post-{$id}-counter";
+        $userkey = "blog-post-{$id}-users";
+
+        $user = Cache::get($userkey,[]);
+        $userupdate = [];
+        $difference = 0;
+        $now = now();
+        //dd($user);
+        foreach($user as $session => $lastvisit){
+            if($now->diffInMinutes($lastvisit) >= 1){
+                $difference --;
+            } else {
+                $userupdate[$session] = $lastvisit;
+            }
+        }
+
+        if (
+            !array_key_exists($sessionid,$user) ||
+            ($now->diffInMinutes($user[$sessionid]) >= 1)
+            ) {
+            $difference++;
+        }
+
+        $userupdate[$sessionid] = now();
+        Cache::forever($userkey,$userupdate);
+        if(!Cache::has($counterkey)){
+            Cache::forever($counterkey,1);
+        } else {
+            Cache::increment($counterkey,$difference);
+        }
+        
+
+        $counter = Cache::get($counterkey);
+
+        return view('post.show',['post' => $blogpost,'counter' => $counter]);
     }
 
     /**
@@ -94,7 +148,11 @@ class PostsController extends Controller
     public function edit($id)
     {
         //return "hola";
-        return view('post.edit',['post' => BlogPost::findOrFail($id)]);
+        $post = BlogPost::findOrFail($id);
+
+        $this->authorize('update',$post);
+
+        return view('post.edit',['post' => $post]);
     }
 
     /**
@@ -107,6 +165,12 @@ class PostsController extends Controller
     public function update(StorePost $request, $id)
     {
         $post = BlogPost::findOrFail($id);
+
+        // if(Gate::denies('update-post',$post)){
+        //     abort(403,'you cant edit this blog post');
+        // }
+        $this->authorize('update',$post);
+
         $validate = $request->validated();
         $post->fill($validate);
         $post->save();
@@ -125,6 +189,12 @@ class PostsController extends Controller
     public function destroy($id)
     {
         $post = BlogPost::findOrFail($id);
+
+        // if(Gate::denies('delete-post',$post)){
+        //     abort(403,'you cant delete this blog post');
+        // }
+        $this->authorize('delete',$post);
+
         $post->delete();
 
         session()->flash('status','Bloc post was deleted!');

@@ -10942,3 +10942,7 @@ a.text-dark:focus {
   }
 }
 
+.badge-lg {
+  font-size: 1rem;
+}
+
