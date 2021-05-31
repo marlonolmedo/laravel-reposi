@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Cache;
 //use Illuminate\Support\Facades\DB;
 use App\Models\User;
 //use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Image;
 
 class PostsController extends Controller
 {
@@ -70,6 +72,31 @@ class PostsController extends Controller
         $validate = $request->validated();
         $validate['user_id'] = $request->user()->id;
         $post = BlogPost::create($validate);
+        //$hasfile = $request->hasFile('thumbnail');
+
+        if($request->hasFile('thumbnail')){
+            //dump($hasfile);
+            $path = $request->file('thumbnail')->store('thumbnails');
+            $post->image()->save(
+                Image::create([
+                    'path' => $path
+                ])
+            );
+            // dump($file);
+            // dump($file->getClientMimeType());
+            // dump($file->getClientOriginalExtension());
+
+            // dump($file->store('thumbnails'));
+            // dump(Storage::disk('public')->putFile('thumbnails',$file));
+
+            // $name1 = $file->storeAs('thumbnails',$post->id.'.'.$file->guessExtension());
+            // $name2 = Storage::putFileAs('thumbnails',$file,$post->id.'.'.$file->guessExtension());
+
+            // dump(Storage::url($name1));
+            // dump(Storage::disk('local')->url($name2));
+        }
+        // dump($request->hasFile('thumbnail'));
+        // die();
         //$post = new BlogPost();
         // $post->title = $validate['title'];
         // $post->content = $validate['content'];
@@ -173,6 +200,22 @@ class PostsController extends Controller
 
         $validate = $request->validated();
         $post->fill($validate);
+
+        if($request->hasFile('thumbnail')){
+            $path = $request->file('thumbnail')->store('thumbnails');
+            if($post->image){
+                Storage::delete($post->image->path);
+                $post->image->path = $path;
+                $post->image->save();
+            } else {
+                $post->image()->save(
+                    Image::create([
+                        'path' => $path
+                    ])
+                );
+            }
+        }
+
         $post->save();
 
         $request->session()->flash('status','Blogpost was update');
